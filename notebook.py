@@ -8,7 +8,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.16.0
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
@@ -29,6 +29,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
 import datetime
 import random
 
@@ -38,8 +40,16 @@ import random
 
 data = pd.read_csv("german_air_fares.csv", sep=";")
 data.head()
+data.head()
+data.info()
+data.describe() 
 
-# ### **2.3) Dataset Cleanup**
+# ### **2.3) Missing Values**
+
+print(data.isnull().sum())
+data = data.dropna() # we can just drop this little number of missing values
+
+# ### **2.4) Ambiguous Values & Cleanup**
 #
 # Problem: "1 Stopp" and "1 stop" is the same, but in two different languages. We have the same problem with "Mehrere Fluglinien" and "Multiple Airlines".
 
@@ -73,6 +83,7 @@ data.departure_date_distance = data.departure_date_distance.str.replace('3 month
 data.departure_time = data.departure_time.str.replace(' Uhr', '')
 
 # update data types
+#data.price = data.price.str.replace('', '0')
 data = data.astype({'price': 'int32'})
 
 # delete erroneous row
@@ -85,6 +96,37 @@ data = data.astype({'departure_time': 'datetime64[ns]'})
 
 
 # -
+
+# ### **2.5) Feature Augmentation**
+# //features adden (mean,...?)
+
+# +
+#stuff
+# -
+
+# ### **2.6) Encoding of categorical Features & Standardization of numerical Features**
+
+# +
+features = data[['airline', 'stops', 'departure_date', 'departure_time', 'departure_date_distance']]
+label = data['price']
+
+# One-hot encode categorical features and scale numerical features
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', StandardScaler(), ['stops']),
+        ('cat', OneHotEncoder(), ['airline', 'departure_date_distance'])
+    ])
+
+X = preprocessor.fit_transform(features)
+y = label.values
+# -
+
+# ### **2.7) Train/Test Split**
+
+#could stratify departure date, but not important imo because there are no dates with a really low number of entries 
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+#
 
 data.dtypes
 
@@ -175,10 +217,6 @@ print_price_distributions(data)
 
 
 # ## **4) Train & Test Subsets**
-
-# ### **4.1) Convert non number values into sensible numbers**
-
-
 
 # ### **4.2) Add mean, median, min and max as new columns**
 
@@ -361,7 +399,7 @@ plt.ylabel('Vorhergesagte Preise')
 plt.title('Vorhergesagte Preise vs Tatsächliche Preise')
 max_price = max(y_test.max(), predictions.max())
 min_price = min(y_test.min(), predictions.min())
-plt.plot([min_price, 1000], [min_price, 1000], 'r--')  # Rote gestrichelte Linie
+plt.plot([min_price, max_price], [min_price, max_price], 'r--')  # Rote gestrichelte Linie
 
 plt.show()
 # -
