@@ -8,7 +8,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.16.0
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
@@ -300,6 +300,31 @@ print(Y)
 
 # ### **5.1) Linear Regression**
 
+# +
+def hyphotesis(x, theta):
+    
+    return np.dot(x, theta)
+
+def error_function1(x, y, theta):
+    h = hyphotesis(x, theta)
+    
+    return 1/(2 * len(y)) * np.sum(np.square(h - y))
+
+def error_function2():
+    
+    return
+
+def gradient_descent():
+    
+    return 
+
+def linear_regression():
+    
+    return
+
+
+# -
+
 # ### **5.2) Polynomial Regression**
 
 # ## **6) Training of Neural Network**
@@ -399,7 +424,7 @@ plt.ylabel('Vorhergesagte Preise')
 plt.title('Vorhergesagte Preise vs Tatsächliche Preise')
 max_price = max(y_test.max(), predictions.max())
 min_price = min(y_test.min(), predictions.min())
-plt.plot([min_price, max_price], [min_price, max_price], 'r--')  # Rote gestrichelte Linie
+plt.plot([min_price, 1000], [min_price, 1000], 'r--')  # Rote gestrichelte Linie
 
 plt.show()
 # -
