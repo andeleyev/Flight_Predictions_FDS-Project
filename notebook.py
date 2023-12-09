@@ -27,6 +27,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import random
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
@@ -288,7 +289,7 @@ print(len(train_split))
 #new_data.head()
 # -
 
-# ## **5) Training of Regression Models**
+# ## **99.4) Training of Regression Models**
 
 X = train.iloc[:, 0].values.reshape(-1, 1)  # values converts it into a numpy array
 Y = train.iloc[:, 1].values.reshape(-1, 1)  # -1 means that calculate the dimension of rows, but have 1 column
@@ -298,36 +299,137 @@ print(Y)
 #linear_regressor.fit(X, Y)  # perform linear regression
 #Y_pred = linear_regressor.predict(X)  # make predictions
 
-# ### **5.1) Linear Regression**
+# ## **5) Linear Regression**
 
-# +
-def hyphotesis(x, theta):
-    
+# ### **5.1) Hypothesis**
+# In the linear Regression we will try to predict the price of a flight only knowing a set of input features $x$. We will do this with the hypothesis function $h_\theta(x)$ parameterized by the vector $\theta$.
+#
+# $$    h_\theta(x) = \theta^Tx $$
+
+def hypothesis(x, theta):
     return np.dot(x, theta)
 
+
+# ### **5.2 Error Function**
+#
+# To be able to measure the quality of our parameters and with that our hypothesis we define the following error function:
+#
+# $$J_1(\theta) = \frac{1}{2m}\sum_{i=1}^m (h_\theta(x^i) - y^i)^2$$
+#
+# We also define a second error function $J_2$ which is more numerically stable. 
+# With an error function we can also document and log changes after each iteration in out training process.
+
+# +
 def error_function1(x, y, theta):
-    h = hyphotesis(x, theta)
-    
+    h = hypothesis(x, theta)
+    assert len(y) == len(h), "Dimension missmatch in the error function"
     return 1/(2 * len(y)) * np.sum(np.square(h - y))
 
-def error_function2():
-    
-    return
-
-def gradient_descent():
-    
-    return 
-
-def linear_regression():
-    
-    return
+def error_function2(x, y, theta):
+    h = hypothesis(x, theta)
+    assert len(y) == len(h), "Dimension missmatch in the error function"
+    return np.mean(np.square(h - y))
 
 
 # -
 
-# ### **5.2) Polynomial Regression**
+# ### **5.3 Training**
+#
+# We will train our parameters $\theta$ with Gradient Descent according to the error function $J_1$. We implement three modes of Gradient Descent. To be precise: batch GD, mini batch GD and stochastic GD. Now we are able to compare them in accuracy and speed. So for each iteration we will work on a subset $M \subset X$ of our complete training data with $|M| = m$. The subset size varies on the mode. For stochastic GD $m = 1$, for batch GD $m = |X|$ and for mini batch $m$ equals to a fraction of $|X|$. We update $\theta$ in each iteration according to the Gradient of the error Function.
+#
+# $$\theta_j = \theta_j - \alpha \frac{\delta}{\delta \theta_j}J_1(\theta) = \theta_j - \alpha \frac{1}{m} \sum_{i=1}^m (h_\theta(x^i) - y^i) \cdot x_j$$
+#
+# We update all $\theta_j$ simultaneously 
 
-# ## **6) Training of Neural Network**
+# + is_executing=true
+def compute_gradient(x_batch, theta, y_batch):
+    h = hypothesis(x_batch, theta)
+    error = h - y_batch
+    return np.dot(x_batch.T, error) / len(x_batch) 
+
+def batch_gd(x, y, theta, lr):
+    gradient = compute_gradient(theta, x, y)
+    theta -= lr * gradient
+    
+    return theta
+
+def mini_batch_gd(x, y, theta, lr, m, batch_size):
+    
+    for i in range(0, m, batch_size):
+        x_batch = x[i:i+batch_size]
+        y_batch = y[i:i+batch_size]
+        gradient = compute_gradient(theta, x_batch, y_batch)
+        theta -= lr * gradient
+    
+    
+    return
+
+def stochastic_gd(x, y, theta, lr, shuffled_indices):
+    
+    for i in shuffled_indices:
+        x_sample = x[i:i+1]
+        y_sample = y[i:i+1]
+        gradient = compute_gradient(x_sample, theta, y_sample)
+        
+        theta -= lr * gradient
+        
+    return theta
+
+def linear_regression(x, y, lr=0.01, epochs=1000, log_error=False, mode="stochastic"):
+    m = len(x)
+    n = len(x[0])
+    
+    assert m == len(y), "Dimension mismatch between x and y" 
+    
+    theta = np.random.rand(n)
+    error_log = np.zeros(m + 1)
+    
+    if log_error:
+        
+        if mode == "stochastic":
+            for j in range(epochs):
+                error_log[j] = error_function2(x, y, theta)
+                
+                shuffled_indices = np.random.permutation(m)
+                theta = stochastic_gd(x, y, theta, lr, shuffled_indices)
+        elif mode == "batch":
+            for j in range(epochs):
+                error_log[j] = error_function2(x, y, theta)
+                
+                shuffled_indices = np.random.permutation(m)
+                theta = stochastic_gd(x, y, theta, lr, shuffled_indices)
+        elif mode == "mini_batch":
+            for j in range(epochs):
+                error_log[j] = error_function2(x, y, theta)
+                
+                shuffled_indices = np.random.permutation(m)
+                theta = stochastic_gd(x, y, theta, lr, shuffled_indices)
+        else:
+            print("mode given is not available")
+    else:
+        if mode == "stochastic":
+            for _ in range(epochs):
+                shuffled_indices = np.random.permutation(m)
+                theta = stochastic_gd(x, y, theta, lr, shuffled_indices)
+        elif mode == "batch":
+            for _ in range(epochs):
+                shuffled_indices = np.random.permutation(m)
+                theta = stochastic_gd(x, y, theta, lr, shuffled_indices)
+        elif mode == "mini_batch":
+            for _ in range(epochs):
+                shuffled_indices = np.random.permutation(m)
+                theta = stochastic_gd(x, y, theta, lr, shuffled_indices)
+        else:
+            print("mode given is not available")
+        
+    
+    error_log[m] = error_function2(x, y, theta)
+    return theta, error_log
+# -
+
+# ## **6) Polynomial Regression**
+
+# ## **7) Training of Neural Network**
 
 # +
 #pip install tensorflow
@@ -429,6 +531,6 @@ plt.plot([min_price, 1000], [min_price, 1000], 'r--')  # Rote gestrichelte Linie
 plt.show()
 # -
 
-# ## **7) Comparison of Models**
+# ## **8) Comparison of Models**
 
-# ## **8) Final Thoughts**
+# ## **9) Final Thoughts**
