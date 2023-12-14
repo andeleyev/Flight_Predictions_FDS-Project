@@ -48,7 +48,7 @@ data.describe()
 # ### **2.3) Missing Values**
 
 print(data.isnull().sum())
-data = data.dropna() # we can just drop this little number of missing values
+data = data.dropna() # there is one erroneuos row, we can just drop it
 
 # ### **2.4) Ambiguous Values & Cleanup**
 #
@@ -84,16 +84,12 @@ data.departure_date_distance = data.departure_date_distance.str.replace('3 month
 data.departure_time = data.departure_time.str.replace(' Uhr', '')
 
 # update data types
-#data.price = data.price.str.replace('', '0')
 data = data.astype({'price': 'int32'})
-
-# delete erroneous row
-data = data.drop(data[data.price == data.price.max()].index)
-
 data = data.astype({'stops': 'int32'})
-data = data.astype({'scrape_date': 'datetime64[ns]'})
-data = data.astype({'departure_date': 'datetime64[ns]'})
-data = data.astype({'departure_time': 'datetime64[ns]'})
+data = data.astype({'scrape_date': 'datetime64[ns]'}) #warning
+data = data.astype({'departure_date': 'datetime64[ns]'}) #warning
+data = data.astype({'departure_time': 'datetime64[ns]'}) #warning
+
 
 
 # -
@@ -124,8 +120,20 @@ y = label.values
 
 # ### **2.7) Train/Test Split**
 
-#could stratify departure date, but not important imo because there are no dates with a really low number of entries 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# +
+#toarray() to get ndarrays for regression, might not wanna do this for other models
+X_train, X_test, y_train, y_test = train_test_split(X.toarray(), y, test_size=0.2, random_state=42)
+print(type(X_train))
+
+#Also create small batches (first 10% of data) to check implementations quickly
+fraction = 0.1
+
+X_train_small = X_train[:int(len(X_train) * fraction)]
+y_train_small = y_train[:int(len(y_train) * fraction)]
+
+X_test_small = X_test[:int(len(X_test) * fraction)]
+y_test_small = y_test[:int(len(y_test) * fraction)]
+# -
 
 #
 
@@ -307,7 +315,9 @@ print(Y)
 # $$    h_\theta(x) = \theta^Tx $$
 
 def hypothesis(x, theta):
-    return np.dot(x, theta)
+    print(x.dot(theta).shape)
+    return x.dot(theta)
+    #return np.dot(x, theta)
 
 
 # ### **5.2 Error Function**
@@ -322,12 +332,18 @@ def hypothesis(x, theta):
 # +
 def error_function1(x, y, theta):
     h = hypothesis(x, theta)
-    assert len(y) == len(h), "Dimension missmatch in the error function"
+    if len(y) != len(h):
+        print("Length of y:", len(y))
+        print("Length of h:", len(h))
+        assert len(y) == len(h), "Dimension missmatch in the error function"
     return 1/(2 * len(y)) * np.sum(np.square(h - y))
 
 def error_function2(x, y, theta):
     h = hypothesis(x, theta)
-    assert len(y) == len(h), "Dimension missmatch in the error function"
+    if len(y) != len(h):
+        print("Length of y:", len(y))
+        print("Length of h:", len(h))
+        assert len(y) == len(h), "Dimension missmatch in the error function"
     return np.mean(np.square(h - y))
 
 
@@ -345,10 +361,14 @@ def error_function2(x, y, theta):
 def compute_gradient(x_batch, theta, y_batch):
     h = hypothesis(x_batch, theta)
     error = h - y_batch
+    #gradient = x_batch.T.dot(error) / x_batch.getnnz() # neu
+    #return gradient # neu
     return np.dot(x_batch.T, error) / len(x_batch) 
+    
+
 
 def batch_gd(x, y, theta, lr):
-    gradient = compute_gradient(theta, x, y)
+    gradient = compute_gradient(x, theta, y)
     theta -= lr * gradient
     
     return theta
@@ -358,7 +378,7 @@ def mini_batch_gd(x, y, theta, lr, m, batch_size):
     for i in range(0, m, batch_size):
         x_batch = x[i:i+batch_size]
         y_batch = y[i:i+batch_size]
-        gradient = compute_gradient(theta, x_batch, y_batch)
+        gradient = compute_gradient(x_batch, theta, y_batch)
         theta -= lr * gradient
     
     
@@ -375,32 +395,32 @@ def stochastic_gd(x, y, theta, lr, shuffled_indices):
         
     return theta
 
-def linear_regression(x, y, lr=0.01, epochs=1000, log_error=False, mode="stochastic"):
-    m = len(x)
-    n = len(x[0])
-    
-    assert m == len(y), "Dimension mismatch between x and y" 
+def linear_regression(x, y, lr=0.01, epochs=1000, log_error=False, mode="stochastic", error_function=error_function2):
+    #m = x.getnnz()
+    #n = x[0].getnnz()
+    m, n = x.shape
+    assert m == len(y), f"Dimension mismatch between x {m} and y {len(y)}" 
     
     theta = np.random.rand(n)
-    error_log = np.zeros(m + 1)
+    error_log = np.zeros(epochs + 1)
     
     if log_error:
         
         if mode == "stochastic":
             for j in range(epochs):
-                error_log[j] = error_function2(x, y, theta)
+                error_log[j] = error_function(x, y, theta)
                 
                 shuffled_indices = np.random.permutation(m)
                 theta = stochastic_gd(x, y, theta, lr, shuffled_indices)
         elif mode == "batch":
             for j in range(epochs):
-                error_log[j] = error_function2(x, y, theta)
+                error_log[j] = error_function(x, y, theta)
                 
                 shuffled_indices = np.random.permutation(m)
-                theta = stochastic_gd(x, y, theta, lr, shuffled_indices)
+                theta = batch_gd(x, y, theta, lr, shuffled_indices)
         elif mode == "mini_batch":
             for j in range(epochs):
-                error_log[j] = error_function2(x, y, theta)
+                error_log[j] = error_function(x, y, theta)
                 
                 shuffled_indices = np.random.permutation(m)
                 theta = stochastic_gd(x, y, theta, lr, shuffled_indices)
@@ -414,7 +434,7 @@ def linear_regression(x, y, lr=0.01, epochs=1000, log_error=False, mode="stochas
         elif mode == "batch":
             for _ in range(epochs):
                 shuffled_indices = np.random.permutation(m)
-                theta = stochastic_gd(x, y, theta, lr, shuffled_indices)
+                theta = batch_gd(x, y, theta, lr, shuffled_indices)
         elif mode == "mini_batch":
             for _ in range(epochs):
                 shuffled_indices = np.random.permutation(m)
@@ -423,8 +443,35 @@ def linear_regression(x, y, lr=0.01, epochs=1000, log_error=False, mode="stochas
             print("mode given is not available")
         
     
-    error_log[m] = error_function2(x, y, theta)
+    error_log[m] = error_function(x, y, theta)
     return theta, error_log
+# -
+
+# ### **5.4 Testing**
+
+# +
+error_function = error_function2
+
+#print(X_train_small.shape)
+#print(y_train_small.shape)
+theta, error_log = linear_regression(X_train_small, y_train_small, lr=0.2, epochs=10, log_error=True, mode="stochastic", error_function=error_function)
+y_pred = hypothesis(X_test_small, theta)
+mse = error_function(X_test_small, y_test_small, theta)
+
+#plot model
+plt.scatter(y_test_small, y_pred)
+plt.xlabel("Actual Values")
+plt.ylabel("Predicted Values")
+plt.title("Actual vs. Predicted Values for Linear Regression")
+plt.show()
+
+#plot error
+print(f"Mean Squared Error: {mse}")
+plt.plot(range(len(error_log)), error_log)
+plt.xlabel('Epochs')
+plt.ylabel('Mean Squared Error')
+plt.title('Learning Curve')
+plt.show()
 # -
 
 # ## **6) Polynomial Regression**
